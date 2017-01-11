@@ -61,6 +61,11 @@
 #include "LandmarkCoreIncludes.h"
 #include "GazeEstimation.h"
 
+//GT code begin
+#include <windows.h>
+#include <iostream>
+//GT code end
+
 #include <fstream>
 #include <sstream>
 
@@ -178,6 +183,10 @@ void visualise_tracking(cv::Mat& captured_image, cv::Mat_<float>& depth_image, c
 
 int main (int argc, char **argv)
 {
+
+	//GT code begin
+	int count = 0;
+	//GT code end
 
 	vector<string> arguments = get_arguments(argc, argv);
 
@@ -361,11 +370,20 @@ int main (int argc, char **argv)
 			cv::Point3f gazeDirection0(0, 0, -1);
 			cv::Point3f gazeDirection1(0, 0, -1);
 
+			//GT code begin
+			cv::Point3f gazePoint0(0, 0, 0);
+			cv::Point3f gazePoint1(0, 0, 0);
+
 			if (det_parameters.track_gaze && detection_success && clnf_model.eye_model)
 			{
-				FaceAnalysis::EstimateGaze(clnf_model, gazeDirection0, fx, fy, cx, cy, true);
-				FaceAnalysis::EstimateGaze(clnf_model, gazeDirection1, fx, fy, cx, cy, false);
+				if (count % 15 == 1)
+				{
+					system("cls");
+				}
+				FaceAnalysis::EstimateGazeOnScreen(clnf_model, gazeDirection0, gazePoint0, fx, fy, cx, cy, true, count);
+				FaceAnalysis::EstimateGazeOnScreen(clnf_model, gazeDirection1, gazePoint1, fx, fy, cx, cy, false, count);
 			}
+			//GT code end
 
 			visualise_tracking(captured_image, depth_image, clnf_model, det_parameters, gazeDirection0, gazeDirection1, frame_count, fx, fy, cx, cy);
 			
@@ -394,6 +412,73 @@ int main (int argc, char **argv)
 
 			// Update the frame count
 			frame_count++;
+
+			//GT code begin
+			//cv::Vec6d headPose_camera = LandmarkDetector::GetPoseCamera(clnf_model, fx, fy, cx, cy);
+			//cv::Vec6d headPose_world = LandmarkDetector::GetPoseWorld(clnf_model, fx, fy, cx, cy);
+			//cv::Vec6d headPose_camera_corrected = LandmarkDetector::GetCorrectedPoseCamera(clnf_model, fx, fy, cx, cy);
+			//cv::Vec6d headPose_world_corrected = LandmarkDetector::GetCorrectedPoseWorld(clnf_model, fx, fy, cx, cy);
+
+			//system("cls");
+			//cout << "Gaze Estimation:" << endl;
+			//cout << gazeDirection0 << endl;
+			//cout << gazeDirection1 << endl;
+			//cout << gazePoint0 << endl;
+			//cout << gazePoint1 << endl;
+			//cout << "headPose_cam1=" << headPose_camera <<  endl;
+			//cout << "headPose_cam2=" << headPose_camera_corrected << endl;
+			//cout << "headPose_xxxx=" << headPose_camera - headPose_camera_corrected << endl << endl;
+
+			//cout << "headPose_wld1=" << headPose_world << endl;
+			//cout << "headPose_wld2=" << headPose_world_corrected << endl;
+			//cout << "headPose_xxxx=" << headPose_world - headPose_world_corrected << endl << endl;
+
+			//cout << "headPose_cam1=" << headPose_camera << endl;
+			//cout << "headPose_wld1=" << headPose_world << endl;
+			//cout << "headPose_xxxx=" << headPose_camera - headPose_world << endl << endl;
+
+			//cout << "headPose_cam2=" << headPose_camera_corrected << endl;
+			//cout << "headPose_wld2=" << headPose_world_corrected << endl;
+			//cout << "headPose_xxxx=" << headPose_camera_corrected - headPose_world_corrected << endl << endl;
+
+			if (detection_success && (count++ % 10 == 1))
+			{
+
+				//cout << "Gaze Estimation:" << endl;
+				//cout << gazeDirection0 << endl;
+				//cout << gazeDirection1 << endl;
+				//cout << gazePoint0 << endl;
+				//cout << gazePoint1 << endl;
+
+
+				int paintx0 = 0, painty0 = 0;
+				int paintx1 = 0, painty1 = 0;
+				int paintx2 = 0, painty2 = 0;
+				HDC hdc = GetWindowDC(GetDesktopWindow());
+				HPEN hpen = CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
+				HBRUSH hbrush0 = CreateSolidBrush(RGB(0, 0, 255));
+				HBRUSH hbrush1 = CreateSolidBrush(RGB(0, 255, 0));
+				HBRUSH hbrush2 = CreateSolidBrush(RGB(255, 0, 0));
+
+
+				SelectObject(hdc, hpen);
+				SelectObject(hdc, hbrush0);
+				paintx0 = 960 * (1 - gazePoint0.x / 172.677);
+				painty0 = (gazePoint0.y - 9) / 194.2614 * 1080;
+				//Rectangle(hdc, paintx0, painty0, paintx0 + 15, painty0 + 15);
+
+				SelectObject(hdc, hbrush1);
+				paintx1 = 960 * (1 - gazePoint1.x / 172.677);
+				painty1 = (gazePoint1.y - 9) / 194.2614 * 1080;
+				//Rectangle(hdc, paintx1, painty1, paintx1 + 15, painty1 + 15);
+
+				SelectObject(hdc, hbrush2);
+				paintx2 = (paintx0 + paintx1) / 2;
+				painty2 = (painty0 + painty1) / 2;
+				Rectangle(hdc, paintx2, painty2, paintx2 + 20, painty2 + 20);
+			}
+			//GT code end
+
 
 		}
 		

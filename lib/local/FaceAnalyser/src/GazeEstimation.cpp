@@ -110,6 +110,7 @@ cv::Point3f GetPupilPosition(cv::Mat_<double> eyeLdmks3d){
 	return p;
 }
 
+
 void FaceAnalysis::EstimateGaze(const LandmarkDetector::CLNF& clnf_model, cv::Point3f& gaze_absolute, float fx, float fy, float cx, float cy, bool left_eye)
 {
 	cv::Vec6d headPose = LandmarkDetector::GetPoseCamera(clnf_model, fx, fy, cx, cy);
@@ -155,6 +156,73 @@ void FaceAnalysis::EstimateGaze(const LandmarkDetector::CLNF& clnf_model, cv::Po
 	cv::Point3f gazeVecAxis = RaySphereIntersect(cv::Point3f(0,0,0), rayDir, eyeballCentre, 12) - eyeballCentre;
 	
 	gaze_absolute = gazeVecAxis / norm(gazeVecAxis);
+}
+
+void FaceAnalysis::EstimateGazeOnScreen(const LandmarkDetector::CLNF& clnf_model, cv::Point3f& gaze_absolute, cv::Point3f& gaze_point, float fx, float fy, float cx, float cy, bool left_eye, int count)
+{
+	cv::Vec6d headPose = LandmarkDetector::GetPoseCamera(clnf_model, fx, fy, cx, cy);
+	cv::Vec3d eulerAngles(headPose(3), headPose(4), headPose(5));
+	cv::Matx33d rotMat = LandmarkDetector::Euler2RotationMatrix(eulerAngles);
+
+	int part = -1;
+	for (size_t i = 0; i < clnf_model.hierarchical_models.size(); ++i)
+	{
+		if (left_eye && clnf_model.hierarchical_model_names[i].compare("left_eye_28") == 0)
+		{
+			part = i;
+		}
+		if (!left_eye && clnf_model.hierarchical_model_names[i].compare("right_eye_28") == 0)
+		{
+			part = i;
+		}
+	}
+
+	if (part == -1)
+	{
+		std::cout << "Couldn't find the eye model, something wrong" << std::endl;
+	}
+
+	cv::Mat eyeLdmks3d = clnf_model.hierarchical_models[part].GetShape(fx, fy, cx, cy);
+
+	cv::Point3f pupil = GetPupilPosition(eyeLdmks3d);
+	cv::Point3f rayDir = pupil / norm(pupil);
+
+	cv::Mat faceLdmks3d = clnf_model.GetShape(fx, fy, cx, cy);
+	faceLdmks3d = faceLdmks3d.t();
+	cv::Mat offset = (cv::Mat_<double>(3, 1) << 0, -3.50, 0);
+	int eyeIdx = 1;
+	if (left_eye)
+	{
+		eyeIdx = 0;
+	}
+
+	cv::Mat eyeballCentreMat = (faceLdmks3d.row(36 + eyeIdx * 6) + faceLdmks3d.row(39 + eyeIdx * 6)) / 2.0f + (cv::Mat(rotMat)*offset).t();
+	cv::Point3f eyeballCentre = cv::Point3f(eyeballCentreMat);
+	cv::Point3f gazeVecAxis = RaySphereIntersect(cv::Point3f(0, 0, 0), rayDir, eyeballCentre, 12) - eyeballCentre;
+	gaze_absolute = gazeVecAxis / norm(gazeVecAxis);
+
+	gaze_point = eyeballCentre + gazeVecAxis * (-eyeballCentre.z / gazeVecAxis.z);
+
+	if (count % 20 == 1)
+	{
+		if (left_eye)
+		{
+			cout << "Left Eye to Camera  =" << eyeballCentre << endl;
+			cout << "Gaze Vector Axis    =" << gazeVecAxis << endl;
+			cout << "Gaze Vector Norm    =" << gaze_absolute << endl;
+			cout << "Gaze Point On Laptop=" << gaze_point << endl;
+
+		}
+		else
+		{
+			cout << "Right Eye to Camera =" << eyeballCentre << endl;
+			cout << "Gaze Vector Axis    =" << gazeVecAxis << endl;
+			cout << "Gaze Vector Norm    =" << gaze_absolute << endl;
+			cout << "Gaze Point On Laptop=" << gaze_point << endl;
+		}
+		cout << endl;
+	}
+
 }
 
 
